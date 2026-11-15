@@ -222,6 +222,8 @@ public class MainActivity extends Activity {
         });
         box.addView(save);
 
+        box.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setupView.addView(box);
         root.addView(setupView);
     }
@@ -302,6 +304,8 @@ public class MainActivity extends Activity {
         }
         box.addView(pad);
 
+        box.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         lockView.addView(box);
         root.addView(lockView);
     }
@@ -378,7 +382,14 @@ public class MainActivity extends Activity {
 
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        titles.addView(label("Vault", 22, TEXT, true));
+        TextView vaultTitle = label("Vault", 22, TEXT, true);
+        vaultTitle.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) {
+                if (!decoyMode) showChangePins();
+                return true;
+            }
+        });
+        titles.addView(vaultTitle);
         galleryCount = label("0 photos", 12, MUTED, false);
         titles.addView(galleryCount);
         header.addView(titles, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
@@ -604,6 +615,49 @@ public class MainActivity extends Activity {
                 });
             }
         });
+    }
+
+    private void showChangePins() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), dp(0));
+
+        box.addView(label("CURRENT REAL PIN", 10, MUTED, true));
+        final EditText cur = pinField("");
+        box.addView(cur);
+        box.addView(label("NEW REAL PIN", 10, MUTED, true));
+        final EditText nreal = pinField("");
+        box.addView(nreal);
+        box.addView(label("NEW DECOY PIN", 10, MUTED, true));
+        final EditText ndecoy = pinField("");
+        box.addView(ndecoy);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Change PINs")
+                .setView(box)
+                .setPositiveButton("Save", new android.content.DialogInterface.OnClickListener() {
+                    public void onClick(android.content.DialogInterface d, int which) {
+                        if (pins.check(cur.getText().toString()) != PinManager.REAL) {
+                            toast("Current PIN is wrong");
+                            return;
+                        }
+                        String r = nreal.getText().toString().trim();
+                        String dd = ndecoy.getText().toString().trim();
+                        if (r.length() < 4 || r.length() > 8 || dd.length() < 4 || dd.length() > 8) {
+                            toast("PINs must be 4-8 digits");
+                            return;
+                        }
+                        if (r.equals(dd)) { toast("PINs must be different"); return; }
+                        try {
+                            pins.setPins(r, dd);
+                            toast("PINs updated");
+                        } catch (Exception e) {
+                            toast("Failed: " + e.getMessage());
+                        }
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void confirmDelete(final VaultStore.Item it) {
