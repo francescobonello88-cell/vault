@@ -65,6 +65,7 @@ public class MainActivity extends Activity {
     private boolean decoyMode = false;
     private GalleryAdapter adapter;
     private boolean lockedOut = false;
+    private boolean pickerOpen = false;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -99,7 +100,7 @@ public class MainActivity extends Activity {
     protected void onStop() {
         super.onStop();
         /* never leave the gallery on screen when the app goes to the background */
-        if (pins.hasPin() && galleryView != null && galleryView.getVisibility() == View.VISIBLE) {
+        if (!pickerOpen && pins.hasPin() && galleryView != null && galleryView.getVisibility() == View.VISIBLE) {
             decoyMode = false;
             pinBuffer.setLength(0);
             showLock();
@@ -398,7 +399,7 @@ public class MainActivity extends Activity {
         });
         galleryView.addView(addBtn);
 
-        emptyText = label("No photos yet.\nTap \"Add photos\" and pick what you want hidden.", 13, MUTED, false);
+        emptyText = label("No photos.", 14, MUTED, false);
         emptyText.setGravity(Gravity.CENTER);
         emptyText.setPadding(0, dp(60), 0, 0);
         galleryView.addView(emptyText);
@@ -429,6 +430,11 @@ public class MainActivity extends Activity {
         galleryCount.setText(items.size() + (items.size() == 1 ? " photo" : " photos"));
         boolean empty = items.isEmpty();
         emptyText.setVisibility(empty ? View.VISIBLE : View.GONE);
+        if (empty) {
+            emptyText.setText(decoyMode
+                    ? "No photos."
+                    : "No photos yet.\nTap \"Add photos\" and pick what you want hidden.");
+        }
         grid.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
 
@@ -437,6 +443,7 @@ public class MainActivity extends Activity {
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType("image/*");
         i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+        pickerOpen = true;
         try {
             startActivityForResult(i, REQ_IMPORT);
         } catch (Exception e) {
@@ -447,7 +454,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
-        if (req != REQ_IMPORT || res != RESULT_OK || data == null) return;
+        if (req == REQ_IMPORT) pickerOpen = false;
+        if (req != REQ_IMPORT || res != RESULT_OK || data == null) {
+            refreshGallery();
+            return;
+        }
 
         final List<Uri> uris = new ArrayList<>();
         if (data.getClipData() != null) {
